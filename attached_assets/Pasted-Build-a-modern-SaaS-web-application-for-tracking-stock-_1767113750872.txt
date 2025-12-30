@@ -1,0 +1,148 @@
+Build a modern SaaS web application for tracking stock portfolios and AI-driven stock predictions.
+
+The design, layout, and UX should closely match a clean, card-based financial dashboard similar to the attached reference images: soft backgrounds, rounded cards, clear typography, and a professional fintech aesthetic.
+
+⸻
+
+Tech Stack Requirements
+
+Use a modern full-stack setup:
+– Frontend: React (with Vite or Next.js preferred)
+– Styling: Tailwind CSS or equivalent modern utility-based CSS
+– Charts: Line graphs using a charting library (Chart.js, Recharts, or similar)
+– Backend: Node.js with API routes
+– State management for portfolio data
+– Mock or real stock price API (Alpha Vantage, Yahoo Finance, Polygon, etc.)
+– AI integration for predictions using the best available LLM API (OpenAI, Anthropic, or equivalent)
+
+⸻
+
+Page 1: Portfolio Dashboard (Main Page)
+
+Display Currency Selector
+
+At the top of the page, include a Display Currency dropdown allowing users to choose how values are displayed (e.g., USD – US Dollar).
+
+Changing the currency updates all monetary values across the dashboard.
+
+⸻
+
+Portfolio Summary Cards
+
+Display four summary cards at the top:
+– Total Invested
+– Current Value
+– Total Profit / Loss
+– Total Return (%)
+
+These values should dynamically update based on the user’s portfolio holdings.
+
+⸻
+
+Add Stock Panel
+
+Include a dedicated “Add Stock” card on the left side with the following fields:
+– Ticker Code (e.g., AAPL)
+– Stock Exchange (e.g., NYSE – New York, NASDAQ, etc.)
+– Trading Currency (USD, EUR, etc.)
+– Quantity (number of shares owned)
+– Purchase Price (Price Paid Per Share)
+
+The purchase price field should clearly indicate this is the price the user bought the stock at.
+
+Include a primary CTA button: “Add to Portfolio”
+
+⸻
+
+Portfolio Center Section
+
+The center of the page should display “Your Portfolio.”
+
+If no stocks exist, show an empty state message:
+“No stocks yet. Add your first stock to start tracking your portfolio.”
+
+When stocks are added:
+– Display each stock as a card
+– Show ticker, company name, live price, daily change, and percent change
+– Display a mini line chart showing recent stock performance
+– Show individual profit/loss per stock
+
+Each stock card should visually resemble a real stock market tracking card.
+
+⸻
+
+Page 2: AI Prediction & Analytics Page
+
+Persistent Portfolio Summary Bar
+
+At the top of this page, include a fixed analytics summary container that remains visible:
+– Total Invested
+– Current Portfolio Value
+– Total Profit / Loss
+– Total Return
+– Active Stocks Count
+– Gainers Count
+– Losers Count
+
+This data should be only accessible from the Analytics / Prediction page.
+
+⸻
+
+AI Stock Prediction Section
+
+Below the summary bar, display AI-powered stock prediction cards.
+
+Each prediction card should include:
+– Ticker (e.g., AAPL)
+– Company name
+– Live price
+– Daily change
+– AI Recommendation (BUY / HOLD / SELL)
+– Confidence percentage
+– A visual confidence bar with labeled ranges:
+• SELL (0–40)
+• HOLD (40–60)
+• BUY (60–100)
+
+The card design should match the reference image with a clean, modern, fintech look.
+
+⸻
+
+AI Requirements
+
+Use the best available AI model accessible via API to:
+– Analyze historical price data
+– Analyze trends and indicators
+– Generate a BUY / HOLD / SELL recommendation
+– Output a confidence score
+
+Make it clear that predictions are informational and not financial advice.
+
+⸻
+
+Navigation & UX
+
+Include a top navigation bar with:
+– Portfolio
+– Analytics / AI Predictions
+
+Ensure fast navigation between pages with smooth transitions.
+
+⸻
+
+General Design Requirements
+
+– Rounded cards and containers
+– Light, professional background
+– Clear typography
+– Responsive layout (desktop-first, mobile-friendly)
+– SaaS-grade UI quality
+– Use placeholder data where APIs are unavailable
+
+⸻
+
+Final Notes
+
+The application should feel like a real fintech SaaS product, not a demo.
+
+Prioritize clarity, performance, and clean design.
