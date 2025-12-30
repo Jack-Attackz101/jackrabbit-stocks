@@ -1,0 +1,110 @@
+import { z } from 'zod';
+import { insertStockSchema, stocks } from './schema';
+
+// ============================================
+// SHARED ERROR SCHEMAS
+// ============================================
+export const errorSchemas = {
+  validation: z.object({
+    message: z.string(),
+    field: z.string().optional(),
+  }),
+  notFound: z.object({
+    message: z.string(),
+  }),
+  internal: z.object({
+    message: z.string(),
+  }),
+};
+
+// ============================================
+// API CONTRACT
+// ============================================
+export const api = {
+  stocks: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/stocks',
+      responses: {
+        200: z.array(z.custom<typeof stocks.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/stocks',
+      input: insertStockSchema,
+      responses: {
+        201: z.custom<typeof stocks.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/stocks/:id',
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  market: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/market/:symbol',
+      responses: {
+        200: z.object({
+          symbol: z.string(),
+          price: z.number(),
+          change: z.number(),
+          changePercent: z.number(),
+          history: z.array(z.object({
+            date: z.string(),
+            price: z.number(),
+          })),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  predictions: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/predictions/:symbol',
+      responses: {
+        200: z.object({
+          symbol: z.string(),
+          recommendation: z.enum(["BUY", "HOLD", "SELL"]),
+          confidence: z.number(),
+          reasoning: z.string(),
+        }),
+        500: errorSchemas.internal,
+      },
+    },
+  },
+};
+
+// ============================================
+// HELPER
+// ============================================
+export function buildUrl(path: string, params?: Record<string, string | number>): string {
+  let url = path;
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (url.includes(`:${key}`)) {
+        url = url.replace(`:${key}`, String(value));
+      }
+    });
+  }
+  return url;
+}
+
+// ============================================
+// TYPE HELPERS
+// ============================================
+export type StockInput = z.infer<typeof api.stocks.create.input>;
+export type StockResponse = z.infer<typeof api.stocks.create.responses[201]>;
+export type StocksListResponse = z.infer<typeof api.stocks.list.responses[200]>;
+export type MarketDataResponse = z.infer<typeof api.market.get.responses[200]>;
+export type PredictionResponse = z.infer<typeof api.predictions.get.responses[200]>;
+
+export { insertStockSchema } from './schema';
