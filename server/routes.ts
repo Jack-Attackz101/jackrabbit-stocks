@@ -54,29 +54,113 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  // Mock Market Data
+  // Real Market Data - Using Yahoo Finance via public API
+  // Cache to avoid excessive API calls
+  const marketDataCache = new Map<string, { data: any; timestamp: number }>();
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  async function fetchRealMarketData(symbol: string) {
+    const cacheKey = symbol.toUpperCase();
+    const cached = marketDataCache.get(cacheKey);
+    
+    // Return cached data if still valid
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log(`[Market Data] Using cached data for ${symbol}`);
+      return cached.data;
+    }
+
+    try {
+      // Using free stock data API (finnhub or yahoo-finance alternative)
+      // For development: using a simple fetch to a financial data provider
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${cacheKey}?interval=1d&range=1mo`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`[Market Data] Failed to fetch ${symbol}: ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      const result = data.chart?.result?.[0];
+
+      if (!result || !result.quote || result.quote.length === 0) {
+        console.error(`[Market Data] No data found for ${symbol}`);
+        return null;
+      }
+
+      // Extract current price and historical data
+      const quote = result.quote[0];
+      const currentPrice = quote.close || quote.adjClose;
+      const timestamps = result.timestamp || [];
+      const closes = result.quote.map((q: any) => q.close || q.adjClose);
+
+      if (!currentPrice || currentPrice <= 0) {
+        console.error(`[Market Data] Invalid price for ${symbol}:`, currentPrice);
+        return null;
+      }
+
+      // Calculate daily change
+      const previousClose = closes[closes.length - 2] || closes[closes.length - 1];
+      const change = Number((currentPrice - previousClose).toFixed(2));
+      const changePercent = Number(((change / previousClose) * 100).toFixed(2));
+
+      // Build history for last 30 days
+      const history = timestamps
+        .slice(-30)
+        .map((ts: number, idx: number) => ({
+          date: new Date(ts * 1000).toISOString().split('T')[0],
+          price: Number((closes[closes.length - 30 + idx] || currentPrice).toFixed(2)),
+        }));
+
+      const marketData = {
+        symbol: cacheKey,
+        price: Number(currentPrice.toFixed(2)),
+        change,
+        changePercent,
+        history,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Cache the result
+      marketDataCache.set(cacheKey, { data: marketData, timestamp: Date.now() });
+      console.log(`[Market Data] Fetched real data for ${symbol}: $${currentPrice}`);
+
+      return marketData;
+    } catch (error) {
+      console.error(`[Market Data] Error fetching ${symbol}:`, error);
+      return null;
+    }
+  }
+
   app.get(api.market.get.path, async (req, res) => {
     const symbol = req.params.symbol.toUpperCase();
     
-    // Generate some deterministic-ish mock data based on symbol char codes
-    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const basePrice = (seed % 200) + 50; // Price between 50 and 250
-    const change = (seed % 10) - 5; // Change between -5 and 5
-    const changePercent = (change / basePrice) * 100;
+    try {
+      const marketData = await fetchRealMarketData(symbol);
 
-    // Generate history
-    const history = Array.from({ length: 30 }).map((_, i) => ({
-      date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      price: basePrice + Math.sin(i + seed) * 10,
-    }));
+      if (!marketData) {
+        return res.status(503).json({
+          error: "Live data unavailable",
+          symbol,
+          message: `Unable to fetch market data for ${symbol}. Please try again later.`,
+        });
+      }
 
-    res.json({
-      symbol,
-      price: Number(basePrice.toFixed(2)),
-      change: Number(change.toFixed(2)),
-      changePercent: Number(changePercent.toFixed(2)),
-      history,
-    });
+      res.json(marketData);
+    } catch (error) {
+      console.error(`[Market Data] Unexpected error for ${symbol}:`, error);
+      res.status(503).json({
+        error: "Live data unavailable",
+        symbol,
+        message: "Market data service temporarily unavailable",
+      });
+    }
   });
 
   // AI Predictions

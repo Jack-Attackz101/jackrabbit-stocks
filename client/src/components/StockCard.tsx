@@ -21,10 +21,10 @@ const currencySymbols: Record<string, string> = {
 };
 
 export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: StockCardProps) {
-  const { data: market, isLoading } = useMarketData(stock.symbol);
+  const { data: market, isLoading, error } = useMarketData(stock.symbol);
   const currencySymbol = currencySymbols[currency] || "$";
 
-  if (isLoading || !market) {
+  if (isLoading) {
     return (
       <div className="bg-card rounded-2xl p-6 border border-border shadow-sm h-[200px] flex flex-col justify-between">
         <div className="flex justify-between items-start">
@@ -37,6 +37,32 @@ export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: Sto
         <div className="space-y-2">
           <Skeleton className="h-8 w-24" />
           <Skeleton className="h-4 w-16" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !market) {
+    return (
+      <div className="bg-card rounded-2xl p-6 border border-red-200/50 shadow-sm h-[200px] flex flex-col justify-between">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-2xl font-bold text-foreground">{stock.symbol}</h3>
+            <p className="text-sm text-muted-foreground">{stock.name}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            disabled={isDeleting}
+            onClick={() => onDelete(stock.id)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="bg-red-50 p-3 rounded-lg border border-red-100">
+          <p className="text-xs text-red-700 font-semibold">Live data unavailable</p>
+          <p className="text-xs text-red-600 mt-1">Unable to fetch current price. Refresh to try again.</p>
         </div>
       </div>
     );

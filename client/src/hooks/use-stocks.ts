@@ -63,17 +63,30 @@ export function useDeleteStock() {
 // ============================================
 
 export function useMarketData(symbol: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: [api.market.get.path, symbol],
     queryFn: async () => {
       const url = buildUrl(api.market.get.path, { symbol });
       const res = await fetch(url);
+      
+      // Handle 503 error response properly
+      if (res.status === 503) {
+        return { error: "Live data unavailable", symbol } as any;
+      }
+      
       if (!res.ok) throw new Error("Failed to fetch market data");
       return api.market.get.responses[200].parse(await res.json());
     },
-    enabled: !!symbol, // Only fetch if symbol is present
+    enabled: !!symbol,
     staleTime: 60 * 1000, // Cache for 1 minute
+    retry: 1,
   });
+
+  // Expose error state for data unavailable errors
+  return {
+    ...query,
+    error: query.error || query.data?.error === "Live data unavailable",
+  };
 }
 
 // ============================================
