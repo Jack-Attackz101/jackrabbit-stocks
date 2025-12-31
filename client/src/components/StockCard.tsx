@@ -10,10 +10,19 @@ interface StockCardProps {
   stock: StockResponse;
   onDelete: (id: number) => void;
   isDeleting: boolean;
+  currency?: "USD" | "EUR" | "GBP" | "JPY";
 }
 
-export function StockCard({ stock, onDelete, isDeleting }: StockCardProps) {
+const currencySymbols: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+};
+
+export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: StockCardProps) {
   const { data: market, isLoading } = useMarketData(stock.symbol);
+  const currencySymbol = currencySymbols[currency] || "$";
 
   if (isLoading || !market) {
     return (
@@ -83,7 +92,7 @@ export function StockCard({ stock, onDelete, isDeleting }: StockCardProps) {
           <div>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Current Value</p>
             <p className="text-lg font-bold font-mono text-foreground">
-              ${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currencySymbol}{currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
           <div className="text-right">

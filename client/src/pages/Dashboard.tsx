@@ -1,5 +1,4 @@
 import { useStocks, useDeleteStock } from "@/hooks/use-stocks";
-import { AddStockForm } from "@/components/AddStockForm";
 import { StockCard } from "@/components/StockCard";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Loader2, TrendingUp, DollarSign, PieChart as PieIcon } from "lucide-react";
@@ -104,9 +103,8 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Left Column: Form & Stats (4 cols) */}
+          {/* Left Column: Stats & Chart (4 cols) */}
           <div className="lg:col-span-4 space-y-8">
-            <AddStockForm />
 
             {/* Allocation Chart */}
             {allocationData.length > 0 && (

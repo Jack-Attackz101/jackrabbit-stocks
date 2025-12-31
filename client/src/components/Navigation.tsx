@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BrainCircuit } from "lucide-react";
+import { LayoutDashboard, BrainCircuit, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import rabbitLogo from "@assets/generated_images/red_rabbit_jumping_icon.png";
 
@@ -8,7 +8,8 @@ export function Navigation() {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/predictions", label: "AI Analysis", icon: BrainCircuit },
+    { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+    { href: "/predictions", label: "Smart Prediction", icon: BrainCircuit },
   ];
 
   return (
