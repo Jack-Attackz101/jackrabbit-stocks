@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BrainCircuit, Activity } from "lucide-react";
+import { LayoutDashboard, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
+import rabbitLogo from "@assets/generated_images/red_rabbit_jumping_icon.png";
 
 export function Navigation() {
   const [location] = useLocation();
@@ -15,21 +16,19 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Activity className="w-6 h-6 text-primary" />
-            </div>
+            <img src={rabbitLogo} alt="JackRabbit" className="w-8 h-8 object-contain" />
             <span className="text-xl font-bold font-display tracking-tight text-foreground">
-              StockMind<span className="text-primary">.ai</span>
+              Jack<span className="text-red-600">Rabbit</span>
             </span>
           </div>
           
-          <div className="flex space-x-1 bg-secondary/50 p-1 rounded-xl">
+          <div className="flex space-x-1 bg-secondary/50 p-1 rounded-full px-2 py-1">
             {navItems.map((item) => {
               const isActive = location === item.href;
               return (
                 <Link key={item.href} href={item.href}>
                   <div className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer select-none",
+                    "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer select-none",
                     isActive 
                       ? "bg-white text-primary shadow-sm shadow-black/5" 
                       : "text-muted-foreground hover:text-foreground hover:bg-white/50"

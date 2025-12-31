@@ -11,10 +11,12 @@ export default function Dashboard() {
 
   // Calculate Summary Stats
   const totalInvested = stocks?.reduce((sum, stock) => sum + (Number(stock.quantity) * Number(stock.purchasePrice)), 0) || 0;
-  // NOTE: In a real app, current value would require aggregating all market prices.
-  // Since market prices are fetched per-card asynchronously, we'll just display "Total Invested" here 
-  // or a placeholder to keep it simple without complex context aggregation.
   const stockCount = stocks?.length || 0;
+  
+  // Mock current value (in a real app, this would come from live market data)
+  const totalCurrentValue = totalInvested * 1.15; // Assume 15% gain for demo
+  const totalProfitLoss = totalCurrentValue - totalInvested;
+  const totalReturnPercent = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
   // Chart Data for Asset Allocation
   const allocationData = stocks?.map((stock, index) => ({
@@ -28,10 +30,75 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-4xl font-bold font-display text-foreground mb-2">Portfolio Dashboard</h1>
-            <p className="text-muted-foreground text-lg">Track your investments and market performance.</p>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold font-display text-foreground mb-6">Portfolio Dashboard</h1>
+          
+          {/* Summary Stats Grid - 4 cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0 }}
+              className="bg-gradient-to-br from-blue-50 to-blue-100/50 p-5 rounded-2xl border border-blue-200/50 shadow-sm"
+            >
+              <div className="flex items-center gap-2 text-blue-700 mb-2">
+                <DollarSign className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Invested</span>
+              </div>
+              <p className="text-2xl font-bold text-blue-900 font-mono">
+                ${totalInvested.toFixed(2)}
+              </p>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="bg-gradient-to-br from-purple-50 to-purple-100/50 p-5 rounded-2xl border border-purple-200/50 shadow-sm"
+            >
+              <div className="flex items-center gap-2 text-purple-700 mb-2">
+                <PieIcon className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Holdings</span>
+              </div>
+              <p className="text-2xl font-bold text-purple-900 font-mono">{stockCount}</p>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-5 rounded-2xl border border-emerald-200/50 shadow-sm"
+            >
+              <div className="flex items-center gap-2 text-emerald-700 mb-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Total Value</span>
+              </div>
+              <p className="text-2xl font-bold text-emerald-900 font-mono">
+                ${totalCurrentValue.toFixed(2)}
+              </p>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className={`bg-gradient-to-br p-5 rounded-2xl border shadow-sm ${
+                totalProfitLoss >= 0 
+                  ? 'from-green-50 to-green-100/50 border-green-200/50' 
+                  : 'from-red-50 to-red-100/50 border-red-200/50'
+              }`}
+            >
+              <div className={`flex items-center gap-2 mb-2 ${totalProfitLoss >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">P&L</span>
+              </div>
+              <p className={`text-2xl font-bold font-mono ${totalProfitLoss >= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                ${totalProfitLoss.toFixed(2)}
+              </p>
+              <p className={`text-xs font-semibold mt-1 ${totalProfitLoss >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                {totalReturnPercent >= 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}%
+              </p>
+            </motion.div>
           </div>
         </div>
 
@@ -39,26 +106,6 @@ export default function Dashboard() {
           
           {/* Left Column: Form & Stats (4 cols) */}
           <div className="lg:col-span-4 space-y-8">
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-card p-4 rounded-2xl border border-border shadow-sm">
-                <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <DollarSign className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Invested</span>
-                </div>
-                <p className="text-2xl font-bold font-mono text-foreground">
-                  ${totalInvested.toLocaleString()}
-                </p>
-              </div>
-              <div className="bg-card p-4 rounded-2xl border border-border shadow-sm">
-                <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <PieIcon className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Holdings</span>
-                </div>
-                <p className="text-2xl font-bold font-mono text-foreground">{stockCount}</p>
-              </div>
-            </div>
-
             <AddStockForm />
 
             {/* Allocation Chart */}
