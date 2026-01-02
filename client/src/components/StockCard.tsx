@@ -69,13 +69,13 @@ export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: Sto
   }
 
   const currentValue = Number(stock.quantity) * market.price;
-  const initialValue = Number(stock.quantity) * Number(stock.purchasePrice);
-  const profitLoss = currentValue - initialValue;
-  const profitLossPercent = (profitLoss / initialValue) * 100;
+  const totalCost = Number(stock.quantity) * Number(stock.purchasePrice);
+  const profitLoss = currentValue - totalCost;
+  const profitLossPercent = totalCost > 0 ? (profitLoss / totalCost) * 100 : 0;
   const isPositive = profitLoss >= 0;
 
   // Chart Logic: green if daily change is positive
-  const chartColor = market.change >= 0 ? "var(--success)" : "var(--danger)"; // Using CSS vars mapped in index.css needed, or hex
+  const chartColor = market.change >= 0 ? "var(--success)" : "var(--danger)";
   const chartHex = market.change >= 0 ? "#22c55e" : "#ef4444";
 
   return (
@@ -83,14 +83,16 @@ export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: Sto
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="group relative bg-card rounded-2xl border border-border/50 shadow-sm hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300 overflow-hidden"
+      data-testid={`card-stock-${stock.symbol}`}
     >
-      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="absolute top-2 right-2 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         <Button
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
           disabled={isDeleting}
           onClick={() => onDelete(stock.id)}
+          data-testid={`button-delete-${stock.symbol}`}
         >
           <Trash2 className="w-4 h-4" />
         </Button>
@@ -122,10 +124,22 @@ export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: Sto
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Return</p>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Total P&L</p>
             <p className={`text-lg font-bold font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
               {isPositive ? "+" : ""}{profitLossPercent.toFixed(2)}%
             </p>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-end mb-4">
+          <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">P&L Amount</p>
+            <p className={`text-sm font-bold font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+              {isPositive ? "+" : ""}{currencySymbol}{Math.abs(profitLoss).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="text-right text-[10px] text-muted-foreground italic">
+            Fetched: {new Date(market.timestamp).toLocaleTimeString()}
           </div>
         </div>
 

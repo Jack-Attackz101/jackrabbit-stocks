@@ -54,86 +54,109 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  // Real Market Data - Using Yahoo Finance via public API
-  // Cache to avoid excessive API calls
+  // Financial API Configuration
+  const API_KEY = process.env.FINNHUB_API_KEY || process.env.ALPHA_VANTAGE_API_KEY;
+  
+  if (!API_KEY) {
+    console.warn("[Market Data] WARNING: No API key found for Finnhub or Alpha Vantage. Market data will fail.");
+  }
+
+  // Real Market Data - Using Finnhub as primary provider
   const marketDataCache = new Map<string, { data: any; timestamp: number }>();
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  async function fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.status === 429) {
+          console.log(`[Market Data] Rate limited. Retrying in ${backoff}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoff));
+          backoff *= 2;
+          continue;
+        }
+        return response;
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        backoff *= 2;
+      }
+    }
+    throw new Error("Max retries exceeded");
+  }
 
   async function fetchRealMarketData(symbol: string) {
     const cacheKey = symbol.toUpperCase();
     const cached = marketDataCache.get(cacheKey);
     
-    // Return cached data if still valid
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       console.log(`[Market Data] Using cached data for ${symbol}`);
       return cached.data;
     }
 
+    if (!API_KEY) {
+      console.error("[Market Data] API key missing. Cannot fetch data.");
+      return null;
+    }
+
     try {
-      // Using free stock data API (finnhub or yahoo-finance alternative)
-      // For development: using a simple fetch to a financial data provider
-      const response = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${cacheKey}?interval=1d&range=1mo`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        }
-      );
+      // Finnhub Quote API
+      const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${cacheKey}&token=${API_KEY}`;
+      const response = await fetchWithRetry(quoteUrl, {});
 
       if (!response.ok) {
-        console.error(`[Market Data] Failed to fetch ${symbol}: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`[Market Data] Finnhub error for ${symbol}: ${response.status} - ${errorText}`);
         return null;
       }
 
       const data = await response.json();
-      const result = data.chart?.result?.[0];
-
-      if (!result || !result.quote || result.quote.length === 0) {
-        console.error(`[Market Data] No data found for ${symbol}`);
+      
+      // Finnhub returns 0 for price if symbol not found
+      if (!data.c || data.c === 0) {
+        console.error(`[Market Data] Symbol not found or no data: ${symbol}`);
         return null;
       }
 
-      // Extract current price and historical data
-      const quote = result.quote[0];
-      const currentPrice = quote.close || quote.adjClose;
-      const timestamps = result.timestamp || [];
-      const closes = result.quote.map((q: any) => q.close || q.adjClose);
-
-      if (!currentPrice || currentPrice <= 0) {
-        console.error(`[Market Data] Invalid price for ${symbol}:`, currentPrice);
-        return null;
-      }
-
-      // Calculate daily change
-      const previousClose = closes[closes.length - 2] || closes[closes.length - 1];
+      // Calculations according to mandatory requirements
+      const currentPrice = Number(data.c);
+      const previousClose = Number(data.pc);
       const change = Number((currentPrice - previousClose).toFixed(2));
       const changePercent = Number(((change / previousClose) * 100).toFixed(2));
 
-      // Build history for last 30 days
-      const history = timestamps
-        .slice(-30)
-        .map((ts: number, idx: number) => ({
-          date: new Date(ts * 1000).toISOString().split('T')[0],
-          price: Number((closes[closes.length - 30 + idx] || currentPrice).toFixed(2)),
-        }));
+      // Fetch basic history for the chart (candles)
+      const to = Math.floor(Date.now() / 1000);
+      const from = to - (30 * 24 * 60 * 60); // 30 days
+      const candleUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${cacheKey}&resolution=D&from=${from}&to=${to}&token=${API_KEY}`;
+      const candleRes = await fetchWithRetry(candleUrl, {});
+      
+      let history = [];
+      if (candleRes.ok) {
+        const candleData = await candleRes.json();
+        if (candleData.s === "ok") {
+          history = candleData.t.map((ts: number, idx: number) => ({
+            date: new Date(ts * 1000).toISOString().split('T')[0],
+            price: Number(candleData.c[idx].toFixed(2)),
+          }));
+        }
+      }
 
       const marketData = {
         symbol: cacheKey,
         price: Number(currentPrice.toFixed(2)),
         change,
         changePercent,
-        history,
+        history: history.length > 0 ? history : [{ date: new Date().toISOString().split('T')[0], price: currentPrice }],
         timestamp: new Date().toISOString(),
+        raw: data, // For debugging as requested
       };
 
-      // Cache the result
       marketDataCache.set(cacheKey, { data: marketData, timestamp: Date.now() });
-      console.log(`[Market Data] Fetched real data for ${symbol}: $${currentPrice}`);
+      console.log(`[Market Data] REAL DATA: ${symbol} = $${currentPrice} (Change: ${change}%)`);
 
       return marketData;
     } catch (error) {
-      console.error(`[Market Data] Error fetching ${symbol}:`, error);
+      console.error(`[Market Data] Critical error fetching ${symbol}:`, error);
       return null;
     }
   }
