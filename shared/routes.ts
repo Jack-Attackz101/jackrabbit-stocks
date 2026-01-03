@@ -71,7 +71,26 @@ export const api = {
       method: 'GET' as const,
       path: '/api/predictions',
       responses: {
-        200: z.custom<PredictionResponse>(),
+        200: z.custom<SmartPredictionResponse>(),
+        500: errorSchemas.internal,
+      },
+    },
+  },
+  orion: {
+    chat: {
+      method: 'POST' as const,
+      path: '/api/orion/chat',
+      input: z.object({
+        message: z.string(),
+        history: z.array(z.object({
+          role: z.enum(['user', 'assistant']),
+          content: z.string(),
+        })).optional(),
+      }),
+      responses: {
+        200: z.object({
+          response: z.string(),
+        }),
         500: errorSchemas.internal,
       },
     },

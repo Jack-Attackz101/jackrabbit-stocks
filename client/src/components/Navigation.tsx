@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Sparkles, Briefcase } from "lucide-react";
+import { LayoutDashboard, Sparkles, Briefcase, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import rabbitLogo from "@assets/generated_images/red_rabbit_jumping_icon.png";
 
@@ -10,6 +10,7 @@ export function Navigation() {
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/portfolio", label: "Portfolio", icon: Briefcase },
     { href: "/predictions", label: "Predictions", icon: Sparkles },
+    { href: "/orion", label: "ORION", icon: Brain },
   ];
 
   return (

@@ -294,6 +294,40 @@ Do NOT include markdown. Do NOT include emojis. Do NOT include disclaimers. Do N
     }
   });
 
+  // ORION AI Chat
+  app.post(api.orion.chat.path, async (req, res) => {
+    try {
+      const { message, history = [] } = api.orion.chat.input.parse(req.body);
+      const stocks = await storage.getStocks();
+      const portfolioData = stocks.map(s => ({
+        symbol: s.symbol,
+        name: s.name,
+        quantity: Number(s.quantity),
+        purchasePrice: Number(s.purchasePrice),
+        exchange: s.exchange,
+      }));
+
+      const systemPrompt = `You are ORION, an elite AI portfolio intelligence assistant. 
+You act as a conversational investment co-pilot. 
+You have access to the user's portfolio: ${JSON.stringify(portfolioData)}.
+Respond with clear, intelligent, and actionable insights. Be concise and sound like a premium financial assistant.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...history.map((h: any) => ({ role: h.role, content: h.content })),
+          { role: "user", content: message }
+        ],
+      });
+
+      res.json({ response: response.choices[0].message.content });
+    } catch (error) {
+      console.error("Orion error:", error);
+      res.status(500).json({ message: "ORION is currently resting. Please try again later." });
+    }
+  });
+
   await seedDatabase();
 
   return httpServer;

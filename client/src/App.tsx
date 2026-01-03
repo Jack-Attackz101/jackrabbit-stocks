@@ -7,6 +7,7 @@ import { Navigation } from "@/components/Navigation";
 import Dashboard from "@/pages/Dashboard";
 import Portfolio from "@/pages/Portfolio";
 import Predictions from "@/pages/Predictions";
+import Orion from "@/pages/Orion";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/portfolio" component={Portfolio} />
         <Route path="/predictions" component={Predictions} />
+        <Route path="/orion" component={Orion} />
         <Route component={NotFound} />
       </Switch>
     </div>

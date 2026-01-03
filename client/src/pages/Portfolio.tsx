@@ -12,13 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Currency = "USD" | "EUR" | "GBP" | "JPY";
+type Currency = "USD" | "EUR" | "GBP" | "JPY" | "CAD";
 
 const currencySymbols: Record<Currency, string> = {
   USD: "$",
   EUR: "€",
   GBP: "£",
   JPY: "¥",
+  CAD: "C$",
 };
 
 export default function Portfolio() {
@@ -56,6 +57,7 @@ export default function Portfolio() {
                 <SelectItem value="EUR">EUR - Euro</SelectItem>
                 <SelectItem value="GBP">GBP - British Pound</SelectItem>
                 <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
+                <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
               </SelectContent>
             </Select>
           </motion.div>

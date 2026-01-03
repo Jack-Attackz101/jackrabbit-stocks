@@ -10,7 +10,7 @@ interface StockCardProps {
   stock: StockResponse;
   onDelete: (id: number) => void;
   isDeleting: boolean;
-  currency?: "USD" | "EUR" | "GBP" | "JPY";
+  currency?: "USD" | "EUR" | "GBP" | "JPY" | "CAD";
 }
 
 const currencySymbols: Record<string, string> = {
@@ -18,6 +18,7 @@ const currencySymbols: Record<string, string> = {
   EUR: "€",
   GBP: "£",
   JPY: "¥",
+  CAD: "C$",
 };
 
 export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: StockCardProps) {
