@@ -84,10 +84,16 @@ export function AddStockForm() {
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="NASDAQ">NASDAQ</SelectItem>
-                <SelectItem value="NYSE">NYSE</SelectItem>
-                <SelectItem value="LSE">LSE</SelectItem>
-                <SelectItem value="CRYPTO">CRYPTO</SelectItem>
+                <SelectItem value="NASDAQ">NASDAQ (National Association of Securities Dealers Automated Quotations)</SelectItem>
+                <SelectItem value="NYSE">NYSE (New York Stock Exchange)</SelectItem>
+                <SelectItem value="SSE">SSE (Shanghai Stock Exchange)</SelectItem>
+                <SelectItem value="EURONEXT">EURONEXT (European New Exchange Technology)</SelectItem>
+                <SelectItem value="JPX">JPX (Japan Exchange Group)</SelectItem>
+                <SelectItem value="SZSE">SZSE (Shenzhen Stock Exchange)</SelectItem>
+                <SelectItem value="LSE">LSE (London Stock Exchange)</SelectItem>
+                <SelectItem value="HKEX">HKEX (Hong Kong Exchanges and Clearing)</SelectItem>
+                <SelectItem value="TSX">TSX (Toronto Stock Exchange)</SelectItem>
+                <SelectItem value="TADAWUL">TADAWUL (Saudi Stock Exchange)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -118,7 +124,7 @@ export function AddStockForm() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="purchasePrice">Avg. Price</Label>
+            <Label htmlFor="purchasePrice">Purchase Price</Label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
               <Input 

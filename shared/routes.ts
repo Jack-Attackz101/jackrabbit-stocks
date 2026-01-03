@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertStockSchema, stocks } from './schema';
+import { insertStockSchema, stocks, type SmartPredictionResponse } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS

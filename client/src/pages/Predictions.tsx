@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
-import type { PredictionResponse } from "@shared/schema";
+import type { SmartPredictionResponse } from "@shared/schema";
 
 export default function Predictions() {
-  const { data: predictions, isLoading, error } = useQuery<PredictionResponse>({
+  const { data: predictions, isLoading, error } = useQuery<SmartPredictionResponse>({
     queryKey: ["/api/predictions"],
   });
 
@@ -53,37 +53,39 @@ export default function Predictions() {
       </div>
 
       <div className="space-y-10">
-        <section>
-          <h2 className="text-2xl font-bold mb-6">Portfolio Analysis</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {predictions?.ownedStocks.map((stock) => (
-              <Card 
-                key={stock.ticker} 
-                className="hover-elevate border-0 shadow-lg bg-card/50 backdrop-blur-md rounded-2xl overflow-hidden"
-              >
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div className="space-y-1">
-                    <CardTitle className="text-2xl font-bold">{stock.ticker}</CardTitle>
-                    <Badge variant={stock.action === "Sell" ? "destructive" : "secondary"}>
-                      {stock.action}
+        {predictions?.ownedStocks && predictions.ownedStocks.length > 0 && (
+          <section>
+            <h2 className="text-2xl font-bold mb-6">Portfolio Analysis</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {predictions.ownedStocks.map((stock: any) => (
+                <Card 
+                  key={stock.ticker} 
+                  className="hover-elevate border-0 shadow-lg bg-card/50 backdrop-blur-md rounded-2xl overflow-hidden"
+                >
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div className="space-y-1">
+                      <CardTitle className="text-2xl font-bold">{stock.ticker}</CardTitle>
+                      <Badge variant={stock.action === "Sell" ? "destructive" : "secondary"}>
+                        {stock.action}
+                      </Badge>
+                    </div>
+                    <Badge variant="outline" className="text-xs uppercase tracking-wider">
+                      {stock.confidence} Confidence
                     </Badge>
-                  </div>
-                  <Badge variant="outline" className="text-xs uppercase tracking-wider">
-                    {stock.confidence} Confidence
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm font-medium leading-tight">
-                    {stock.summary}
-                  </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {stock.explanation}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm font-medium leading-tight">
+                      {stock.summary}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {stock.explanation}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
@@ -91,7 +93,7 @@ export default function Predictions() {
             Buy Opportunities
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {predictions?.recommendedBuys.map((stock) => (
+            {predictions?.recommendedBuys.map((stock: any) => (
               <Card 
                 key={stock.ticker}
                 className="hover-elevate border-0 shadow-lg bg-emerald-50/30 dark:bg-emerald-950/10 backdrop-blur-md rounded-2xl overflow-hidden"

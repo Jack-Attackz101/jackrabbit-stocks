@@ -131,15 +131,29 @@ export function StockCard({ stock, onDelete, isDeleting, currency = "USD" }: Sto
           </div>
         </div>
 
-        <div className="flex justify-between items-end mb-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Purchase Price</p>
+            <p className="text-sm font-bold font-mono text-foreground">
+              {currencySymbol}{Number(stock.purchasePrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="text-right">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">P&L Amount</p>
             <p className={`text-sm font-bold font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
               {isPositive ? "+" : ""}{currencySymbol}{Math.abs(profitLoss).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
           </div>
+        </div>
+
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-1.5">
+            <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-bold text-muted-foreground uppercase">
+              {stock.currency || 'USD'}
+            </span>
+          </div>
           <div className="text-right text-[10px] text-muted-foreground italic">
-            Fetched: {new Date(market.timestamp).toLocaleTimeString()}
+            Refreshed: {new Date(market.timestamp).toLocaleTimeString()}
           </div>
         </div>
 

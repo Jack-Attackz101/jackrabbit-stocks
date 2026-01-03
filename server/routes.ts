@@ -228,7 +228,7 @@ Your task is to generate clear, actionable smart predictions — NOT financial a
 ## CORE OBJECTIVE
 1. Analyze each stock the user currently owns
 2. Classify each one into exactly one of the following: Sell, Hold
-3. Recommend new stocks the user does NOT own as: Buy Opportunities
+3. Recommend EXACTLY 6 new stocks the user does NOT own as Buy Opportunities. Ensure these are NOT in the provided owned stocks list. Be diverse in sector selection.
 
 ## OUTPUT STRUCTURE (VERY IMPORTANT)
 Return your response in clean, structured JSON exactly matching this schema:
