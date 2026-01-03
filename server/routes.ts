@@ -58,7 +58,9 @@ export async function registerRoutes(
   const API_KEY = process.env.FINNHUB_API_KEY || process.env.ALPHA_VANTAGE_API_KEY;
   
   if (!API_KEY) {
-    console.warn("[Market Data] WARNING: No API key found for Finnhub or Alpha Vantage. Market data will fail.");
+    const errorMsg = "[Market Data] CRITICAL ERROR: No API key found for Finnhub or Alpha Vantage. Stock market data engine cannot start. Please add FINNHUB_API_KEY or ALPHA_VANTAGE_API_KEY to your Replit Secrets.";
+    console.error(errorMsg);
+    // We throw an error at runtime but for the server to stay up we just log it and handle it in the routes
   }
 
   // Real Market Data - Using Finnhub as primary provider
@@ -70,13 +72,20 @@ export async function registerRoutes(
       try {
         const response = await fetch(url, options);
         if (response.status === 429) {
-          console.log(`[Market Data] Rate limited. Retrying in ${backoff}ms...`);
-          await new Promise(resolve => setTimeout(resolve, backoff));
+          const retryAfter = response.headers.get("retry-after");
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : backoff;
+          console.warn(`[Market Data] Rate limited (429). Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
           backoff *= 2;
           continue;
         }
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`API returned ${response.status}: ${text}`);
+        }
         return response;
       } catch (err) {
+        console.error(`[Market Data] Attempt ${i + 1} failed:`, err);
         if (i === retries - 1) throw err;
         await new Promise(resolve => setTimeout(resolve, backoff));
         backoff *= 2;
@@ -95,69 +104,68 @@ export async function registerRoutes(
     }
 
     if (!API_KEY) {
-      console.error("[Market Data] API key missing. Cannot fetch data.");
-      return null;
+      throw new Error("API key missing. Cannot fetch live data. Please configure FINNHUB_API_KEY in Secrets.");
     }
 
     try {
-      // Finnhub Quote API
+      // Finnhub Quote API: c=current, pc=prev close, o=open, h=high, l=low, v=volume(not provided in quote but available in candle)
       const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${cacheKey}&token=${API_KEY}`;
       const response = await fetchWithRetry(quoteUrl, {});
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[Market Data] Finnhub error for ${symbol}: ${response.status} - ${errorText}`);
-        return null;
-      }
-
       const data = await response.json();
       
-      // Finnhub returns 0 for price if symbol not found
       if (!data.c || data.c === 0) {
-        console.error(`[Market Data] Symbol not found or no data: ${symbol}`);
-        return null;
+        throw new Error(`Invalid ticker or no data found for symbol: ${symbol}`);
       }
 
-      // Calculations according to mandatory requirements
       const currentPrice = Number(data.c);
       const previousClose = Number(data.pc);
+      const open = Number(data.o);
+      const high = Number(data.h);
+      const low = Number(data.l);
+      
+      // Mandatory financial calculations
       const change = Number((currentPrice - previousClose).toFixed(2));
       const changePercent = Number(((change / previousClose) * 100).toFixed(2));
 
-      // Fetch basic history for the chart (candles)
+      // Fetch 30-day candles for history and volume
       const to = Math.floor(Date.now() / 1000);
-      const from = to - (30 * 24 * 60 * 60); // 30 days
+      const from = to - (30 * 24 * 60 * 60); 
       const candleUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${cacheKey}&resolution=D&from=${from}&to=${to}&token=${API_KEY}`;
       const candleRes = await fetchWithRetry(candleUrl, {});
+      const candleData = await candleRes.json();
       
       let history = [];
-      if (candleRes.ok) {
-        const candleData = await candleRes.json();
-        if (candleData.s === "ok") {
-          history = candleData.t.map((ts: number, idx: number) => ({
-            date: new Date(ts * 1000).toISOString().split('T')[0],
-            price: Number(candleData.c[idx].toFixed(2)),
-          }));
-        }
+      let volume = 0;
+      if (candleData.s === "ok") {
+        history = candleData.t.map((ts: number, idx: number) => ({
+          date: new Date(ts * 1000).toISOString().split('T')[0],
+          price: Number(candleData.c[idx].toFixed(2)),
+        }));
+        volume = Number(candleData.v[candleData.v.length - 1]); // Last day volume
       }
 
       const marketData = {
         symbol: cacheKey,
         price: Number(currentPrice.toFixed(2)),
+        open: Number(open.toFixed(2)),
+        high: Number(high.toFixed(2)),
+        low: Number(low.toFixed(2)),
+        previousClose: Number(previousClose.toFixed(2)),
+        volume,
         change,
         changePercent,
         history: history.length > 0 ? history : [{ date: new Date().toISOString().split('T')[0], price: currentPrice }],
         timestamp: new Date().toISOString(),
-        raw: data, // For debugging as requested
+        raw: { quote: data, candles: candleData }, // Return raw for debugging
       };
 
       marketDataCache.set(cacheKey, { data: marketData, timestamp: Date.now() });
-      console.log(`[Market Data] REAL DATA: ${symbol} = $${currentPrice} (Change: ${change}%)`);
+      console.log(`[Market Data] SUCCESS: ${symbol} = $${currentPrice}`);
 
       return marketData;
-    } catch (error) {
-      console.error(`[Market Data] Critical error fetching ${symbol}:`, error);
-      return null;
+    } catch (error: any) {
+      console.error(`[Market Data] ERROR for ${symbol}:`, error.message);
+      throw error;
     }
   }
 
@@ -166,22 +174,13 @@ export async function registerRoutes(
     
     try {
       const marketData = await fetchRealMarketData(symbol);
-
-      if (!marketData) {
-        return res.status(503).json({
-          error: "Live data unavailable",
-          symbol,
-          message: `Unable to fetch market data for ${symbol}. Please try again later.`,
-        });
-      }
-
       res.json(marketData);
-    } catch (error) {
-      console.error(`[Market Data] Unexpected error for ${symbol}:`, error);
+    } catch (error: any) {
       res.status(503).json({
-        error: "Live data unavailable",
+        error: "Market Data Unavailable",
+        reason: error.message,
         symbol,
-        message: "Market data service temporarily unavailable",
+        instructions: !API_KEY ? "Add FINNHUB_API_KEY to Replit Secrets to fix." : "Verify ticker symbol or check API rate limits."
       });
     }
   });

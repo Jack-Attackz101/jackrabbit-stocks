@@ -1,0 +1,72 @@
+:::writing{id=“73942” variant=“standard”}
+You are building a production-ready stock market data engine, not a mock or demo.
+
+Your task is to create a working application that fetches real-time and historical stock market data from live financial APIs, performs correct financial calculations, and never returns placeholder or fake data.
+
+1. DATA SOURCES (MANDATORY)
+
+You MUST use one or more of the following real stock market APIs:
+	•	Polygon.io
+	•	Alpha Vantage
+	•	Finnhub
+	•	Yahoo Finance (via yfinance library, Python only)
+
+You MUST:
+	•	Require an API key via environment variables (e.g. process.env.API_KEY or os.environ)
+	•	Validate the API key at startup
+	•	Throw a clear error if the key is missing or invalid
+
+2. FETCHING LIVE DATA (CRITICAL)
+	•	Fetch live price, previous close, open, high, low, volume
+	•	Support multiple tickers simultaneously
+	•	Implement retry logic (minimum 3 retries with exponential backoff)
+	•	If rate-limited, wait and retry instead of failing
+	•	If the API is down, return a clear error message — never dummy data
+
+3. FINANCIAL MATH (NO GUESSING)
+
+All calculations must be mathematically correct and unit-tested:
+	•	Daily % change
+	•	Portfolio value
+	•	Profit / loss
+	•	Weighted averages
+	•	Market cap calculations
+	•	Historical returns
+
+Double-check:
+	•	Decimal precision
+	•	Currency consistency
+	•	Timezone alignment (market hours vs local time)
+
+4. TECH STACK RULES
+
+Choose ONE:
+	•	Python: requests, pandas, yfinance, numpy
+	•	Node.js: axios, node-fetch, official SDKs
+
+No fake libraries. No mocked responses.
+
+5. ERROR HANDLING (NON-NEGOTIABLE)
+
+If data cannot be fetched:
+	•	Log the full error
+	•	Display the exact reason (rate limit, invalid ticker, network issue)
+	•	Do NOT say “unable to fetch data” without explanation
+
+6. ARCHITECTURE
+	•	Separate data fetching, calculations, and UI/API routes
+	•	Cache results briefly to avoid rate limits
+	•	Allow easy swapping of data providers
+
+7. OUTPUT
+
+Return:
+	•	Raw API response (for debugging)
+	•	Cleaned, structured stock data
+	•	Verified calculated metrics
+
+8. ABSOLUTE RULES
+	•	DO NOT hallucinate numbers
+	•	DO NOT return static values
+	•	DO NOT silently fail
+	•	If live data cannot be fetched, explain exactly why and how to fix it
