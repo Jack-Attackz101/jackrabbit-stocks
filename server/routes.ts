@@ -131,17 +131,25 @@ export async function registerRoutes(
       const to = Math.floor(Date.now() / 1000);
       const from = to - (30 * 24 * 60 * 60); 
       const candleUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${cacheKey}&resolution=D&from=${from}&to=${to}&token=${API_KEY}`;
-      const candleRes = await fetchWithRetry(candleUrl, {});
-      const candleData = await candleRes.json();
       
-      let history = [];
+      let history = [{ date: new Date().toISOString().split('T')[0], price: currentPrice }];
       let volume = 0;
-      if (candleData.s === "ok") {
-        history = candleData.t.map((ts: number, idx: number) => ({
-          date: new Date(ts * 1000).toISOString().split('T')[0],
-          price: Number(candleData.c[idx].toFixed(2)),
-        }));
-        volume = Number(candleData.v[candleData.v.length - 1]); // Last day volume
+      let candleData = null;
+
+      try {
+        const candleRes = await fetchWithRetry(candleUrl, {});
+        if (candleRes.ok) {
+          candleData = await candleRes.json();
+          if (candleData.s === "ok") {
+            history = candleData.t.map((ts: number, idx: number) => ({
+              date: new Date(ts * 1000).toISOString().split('T')[0],
+              price: Number(candleData.c[idx].toFixed(2)),
+            }));
+            volume = Number(candleData.v[candleData.v.length - 1]); // Last day volume
+          }
+        }
+      } catch (err) {
+        console.warn(`[Market Data] History fetch failed for ${symbol}, using minimal data:`, err.message);
       }
 
       const marketData = {
@@ -154,7 +162,7 @@ export async function registerRoutes(
         volume,
         change,
         changePercent,
-        history: history.length > 0 ? history : [{ date: new Date().toISOString().split('T')[0], price: currentPrice }],
+        history,
         timestamp: new Date().toISOString(),
         raw: { quote: data, candles: candleData }, // Return raw for debugging
       };
