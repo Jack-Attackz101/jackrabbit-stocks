@@ -46,8 +46,7 @@ export interface MarketData {
   history: { date: string; price: number }[]; // For mini-chart
 }
 
-// AI Prediction Response
-export interface SmartPredictionResponse {
+export type SmartPredictionResponse = {
   ownedStocks: {
     ticker: string;
     action: "Sell" | "Hold";
@@ -61,6 +60,4 @@ export interface SmartPredictionResponse {
     summary: string;
     explanation: string;
   }[];
-}
-
-export type PredictionResponse = SmartPredictionResponse;
+};

@@ -100,6 +100,6 @@ export type StockInput = z.infer<typeof api.stocks.create.input>;
 export type StockResponse = z.infer<typeof api.stocks.create.responses[201]>;
 export type StocksListResponse = z.infer<typeof api.stocks.list.responses[200]>;
 export type MarketDataResponse = z.infer<typeof api.market.get.responses[200]>;
-export type PredictionResponse = z.infer<typeof api.predictions.get.responses[200]>;
+export type PredictionResponse = SmartPredictionResponse;
 
 export { insertStockSchema } from './schema';
