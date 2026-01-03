@@ -69,14 +69,9 @@ export const api = {
   predictions: {
     get: {
       method: 'GET' as const,
-      path: '/api/predictions/:symbol',
+      path: '/api/predictions',
       responses: {
-        200: z.object({
-          symbol: z.string(),
-          recommendation: z.enum(["BUY", "HOLD", "SELL"]),
-          confidence: z.number(),
-          reasoning: z.string(),
-        }),
+        200: z.custom<PredictionResponse>(),
         500: errorSchemas.internal,
       },
     },

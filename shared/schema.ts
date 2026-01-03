@@ -47,9 +47,20 @@ export interface MarketData {
 }
 
 // AI Prediction Response
-export interface PredictionResponse {
-  symbol: string;
-  recommendation: "BUY" | "HOLD" | "SELL";
-  confidence: number; // 0-100
-  reasoning: string;
+export interface SmartPredictionResponse {
+  ownedStocks: {
+    ticker: string;
+    action: "Sell" | "Hold";
+    confidence: "High" | "Medium" | "Low";
+    summary: string;
+    explanation: string;
+  }[];
+  recommendedBuys: {
+    ticker: string;
+    confidence: "High" | "Medium" | "Low";
+    summary: string;
+    explanation: string;
+  }[];
 }
+
+export type PredictionResponse = SmartPredictionResponse;

@@ -195,45 +195,102 @@ export async function registerRoutes(
 
   // AI Predictions
   app.get(api.predictions.get.path, async (req, res) => {
-    const symbol = req.params.symbol.toUpperCase();
-
     try {
+      const stocks = await storage.getStocks();
+      const parsedStocks = stocks.map(s => ({
+        ticker: s.symbol,
+        quantity: Number(s.quantity),
+        purchasePrice: Number(s.purchasePrice),
+      }));
+
+      // Gather market data for owned stocks
+      const marketDataPromises = parsedStocks.map(s => fetchRealMarketData(s.ticker).catch(() => null));
+      const marketDataResults = await Promise.all(marketDataPromises);
+      
+      const portfolioData = parsedStocks.map((s, idx) => {
+        const md = marketDataResults[idx];
+        return {
+          ...s,
+          currentPrice: md?.price || s.purchasePrice,
+          changePercent: md?.changePercent || 0,
+          volume: md?.volume || 0,
+        };
+      });
+
+      const systemPrompt = `You are an advanced AI investment analysis engine embedded inside a stock portfolio tracking web application.
+
+You will be given:
+* The user’s current stock holdings (ticker, quantity, average cost)
+* Real-time and recent historical stock data retrieved via the Finnhub API (price, % change, volume)
+
+Your task is to generate clear, actionable smart predictions — NOT financial advice — using data-driven reasoning.
+
+## CORE OBJECTIVE
+1. Analyze each stock the user currently owns
+2. Classify each one into exactly one of the following: Sell, Hold
+3. Recommend new stocks the user does NOT own as: Buy Opportunities
+
+## OUTPUT STRUCTURE (VERY IMPORTANT)
+Return your response in clean, structured JSON exactly matching this schema:
+{
+  "ownedStocks": [
+    {
+      "ticker": "AAPL",
+      "action": "Hold",
+      "confidence": "High",
+      "summary": "Short one-sentence verdict.",
+      "explanation": "A concise but insightful explanation using market trends, fundamentals, recent performance, and sentiment."
+    }
+  ],
+  "recommendedBuys": [
+    {
+      "ticker": "NVDA",
+      "confidence": "Medium",
+      "summary": "Why this stock stands out right now.",
+      "explanation": "Clear reasoning based on growth signals, momentum, valuation, or sector tailwinds."
+    }
+  ]
+}
+
+Do NOT include markdown. Do NOT include emojis. Do NOT include disclaimers. Do NOT mention APIs.
+
+## ANALYSIS RULES
+* Use real data trends, not vibes
+* Favor clarity over jargon
+* Prioritize: Revenue growth, Earnings trends, Analyst sentiment, News impact, Technical momentum
+
+## TONE & PERSONALITY
+* Confident, calm, and intelligent
+* Sounds like a premium Apple-style financial assistant
+* Insightful but not verbose
+
+## UI-AWARE RESPONSE STYLE
+* Keep explanations tight and scannable
+* Avoid long paragraphs
+* One strong idea per explanation`;
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst AI. Analyze the given stock symbol. Return a JSON object with 'recommendation' (BUY, HOLD, SELL), 'confidence' (0-100 number), and 'reasoning' (short string). Do not include markdown formatting."
+            content: systemPrompt
           },
           {
             role: "user",
-            content: `Analyze stock symbol: ${symbol}`
+            content: `User Portfolio: ${JSON.stringify(portfolioData)}`
           }
         ],
         response_format: { type: "json_object" },
       });
 
       const content = response.choices[0].message.content;
-      if (!content) {
-         throw new Error("No content from OpenAI");
-      }
-      const prediction = JSON.parse(content);
-
-      res.json({
-        symbol,
-        recommendation: prediction.recommendation,
-        confidence: prediction.confidence,
-        reasoning: prediction.reasoning,
-      });
+      if (!content) throw new Error("No content from OpenAI");
+      
+      res.json(JSON.parse(content));
     } catch (error) {
-      console.error("OpenAI error:", error);
-      // Fallback for demo if AI fails or quota exceeded
-      res.json({
-        symbol,
-        recommendation: "HOLD",
-        confidence: 50,
-        reasoning: "AI analysis unavailable, defaulting to neutral stance.",
-      });
+      console.error("Prediction error:", error);
+      res.status(500).json({ message: "Failed to generate predictions" });
     }
   });
 
