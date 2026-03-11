@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertStockSchema, stocks, type SmartPredictionResponse, type XRayReport } from './schema';
+import { insertStockSchema, stocks, type SmartPredictionResponse, type XRayReport, type SimulationResult } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -72,6 +72,23 @@ export const api = {
       path: '/api/predictions',
       responses: {
         200: z.custom<SmartPredictionResponse>(),
+        500: errorSchemas.internal,
+      },
+    },
+  },
+  simulate: {
+    post: {
+      method: 'POST' as const,
+      path: '/api/portfolio/simulate',
+      input: z.object({
+        scenario_type: z.enum(["market_crash", "sector_crash", "stock_crash", "rate_shock"]),
+        severity: z.number().optional(),
+        sector: z.string().optional(),
+        ticker: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<SimulationResult>(),
+        400: errorSchemas.validation,
         500: errorSchemas.internal,
       },
     },

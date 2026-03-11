@@ -46,6 +46,33 @@ export interface MarketData {
   history: { date: string; price: number }[]; // For mini-chart
 }
 
+export type SimulationPositionResult = {
+  ticker: string;
+  sector: string;
+  current_value: number;
+  simulated_value: number;
+  loss_dollar: number;
+  loss_percent: number;
+};
+
+export type SimulationResult = {
+  current_value: number;
+  simulated_value: number;
+  percent_change: number;
+  dollar_change: number;
+  worst_position: { ticker: string; loss_dollar: number; loss_percent: number };
+  top_losses: SimulationPositionResult[];
+  scenario_description: string;
+  explanation: string;
+};
+
+export type SimulationInput = {
+  scenario_type: "market_crash" | "sector_crash" | "stock_crash" | "rate_shock";
+  severity?: number;
+  sector?: string;
+  ticker?: string;
+};
+
 export type XRaySlice = { label: string; percentage: number; value: number };
 
 export type XRayReport = {

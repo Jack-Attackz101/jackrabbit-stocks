@@ -385,6 +385,113 @@ You are ORION in FAST MODE. Users should never feel waiting.`;
     }
   });
 
+  // Scenario Simulation Engine
+  const GROWTH_SECTORS = new Set(["Technology", "Semiconductors", "Communication Services", "Consumer Discretionary", "Media", "Software"]);
+
+  function simulatePortfolioScenario(
+    positions: { ticker: string; sector: string; currentValue: number; beta: number | null }[],
+    scenario: { scenario_type: string; severity?: number; sector?: string; ticker?: string }
+  ) {
+    const currentTotal = positions.reduce((s, p) => s + p.currentValue, 0);
+
+    const simulatedPositions = positions.map(p => {
+      let multiplier = 1.0;
+
+      if (scenario.scenario_type === "market_crash") {
+        multiplier = 1 + (scenario.severity ?? -20) / 100;
+      } else if (scenario.scenario_type === "sector_crash") {
+        if (p.sector === scenario.sector || p.sector.toLowerCase().includes((scenario.sector || "").toLowerCase())) {
+          multiplier = 0.75;
+        }
+      } else if (scenario.scenario_type === "stock_crash") {
+        if (p.ticker === (scenario.ticker || "").toUpperCase()) {
+          multiplier = 0.60;
+        }
+      } else if (scenario.scenario_type === "rate_shock") {
+        let penalty = -0.08;
+        if (GROWTH_SECTORS.has(p.sector)) penalty -= 0.10;
+        const beta = p.beta ?? 1.0;
+        if (beta > 1.5) penalty -= 0.10;
+        else if (beta > 1.2) penalty -= 0.05;
+        multiplier = 1 + penalty;
+      }
+
+      const simValue = p.currentValue * multiplier;
+      return {
+        ticker: p.ticker, sector: p.sector,
+        current_value: Math.round(p.currentValue * 100) / 100,
+        simulated_value: Math.round(simValue * 100) / 100,
+        loss_dollar: Math.round((simValue - p.currentValue) * 100) / 100,
+        loss_percent: Math.round((multiplier - 1) * 10000) / 100,
+      };
+    });
+
+    const simulatedTotal = simulatedPositions.reduce((s, p) => s + p.simulated_value, 0);
+    const sorted = [...simulatedPositions].sort((a, b) => a.loss_dollar - b.loss_dollar);
+    const worst = sorted[0] ?? simulatedPositions[0];
+
+    const scenarioLabels: Record<string, string> = {
+      market_crash: `Market Crash (${scenario.severity ?? -20}%)`,
+      sector_crash: `Sector Crash — ${scenario.sector ?? "Unknown"}`,
+      stock_crash: `Stock Crash — ${scenario.ticker ?? "Unknown"}`,
+      rate_shock: "Interest Rate Shock",
+    };
+    const explanations: Record<string, string> = {
+      market_crash: `A broad ${Math.abs(scenario.severity ?? 20)}% market decline applied uniformly across all holdings. Mirrors historic drawdowns such as the 2020 COVID crash and 2022 bear market.`,
+      sector_crash: `A −25% shock applied to all ${scenario.sector} positions. Models sector-specific dislocations such as regulatory crackdowns or industry downturns.`,
+      stock_crash: `A −40% single-stock event applied to ${scenario.ticker}. Simulates scenarios like earnings miss, fraud revelation, or management crisis.`,
+      rate_shock: `A rising interest rate shock applied with extra penalties for high-beta and growth-sector holdings. Models the 2022-style rate-hiking cycle impact on growth equities.`,
+    };
+
+    return {
+      current_value: Math.round(currentTotal * 100) / 100,
+      simulated_value: Math.round(simulatedTotal * 100) / 100,
+      percent_change: Math.round(((simulatedTotal - currentTotal) / currentTotal) * 10000) / 100,
+      dollar_change: Math.round((simulatedTotal - currentTotal) * 100) / 100,
+      worst_position: { ticker: worst.ticker, loss_dollar: worst.loss_dollar, loss_percent: worst.loss_percent },
+      top_losses: sorted,
+      scenario_description: scenarioLabels[scenario.scenario_type] ?? scenario.scenario_type,
+      explanation: explanations[scenario.scenario_type] ?? "",
+    };
+  }
+
+  app.post(api.simulate.post.path, async (req, res) => {
+    try {
+      const input = api.simulate.post.input.parse(req.body);
+      const stocks = await storage.getStocks();
+
+      if (stocks.length === 0) {
+        return res.status(400).json({ message: "No stocks in portfolio to simulate." });
+      }
+
+      const enriched = await Promise.all(stocks.map(async (stock) => {
+        const symbol = stock.symbol.toUpperCase();
+        let currentPrice = Number(stock.purchasePrice);
+        try {
+          const md = await fetchRealMarketData(symbol);
+          if (md?.price) currentPrice = md.price;
+        } catch {}
+        const profile = await fetchFinnhubProfile(symbol);
+        const metrics = await fetchFinnhubMetrics(symbol);
+        return {
+          ticker: symbol,
+          currentValue: currentPrice * Number(stock.quantity),
+          sector: (profile?.finnhubIndustry as string) || "Unknown",
+          beta: (metrics?.metric?.beta as number | null) ?? null,
+        };
+      }));
+
+      const result = simulatePortfolioScenario(enriched, input);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("ZodError")) {
+        return res.status(400).json({ message: "Invalid simulation parameters." });
+      }
+      console.error("[Simulate] Error:", error);
+      res.status(500).json({ message: "Simulation failed." });
+    }
+  });
+
   // Portfolio X-Ray
   app.get(api.xray.get.path, async (req, res) => {
     const CACHE_KEY = "portfolio_xray";

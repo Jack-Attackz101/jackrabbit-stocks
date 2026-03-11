@@ -46,6 +46,7 @@ The API contract is defined in `shared/routes.ts` with typed paths and Zod schem
 - `GET /api/market/:symbol` - Fetch real-time market data (Finnhub)
 - `GET /api/predictions` - Get AI investment recommendations
 - `GET /api/portfolio/xray` - Portfolio X-Ray risk intelligence report (15-min cache)
+- `POST /api/portfolio/simulate` - Scenario simulation engine (market crash, sector crash, stock crash, rate shock)
 - `POST /api/orion/chat` - ORION AI chat endpoint
 
 ### AI Integration
