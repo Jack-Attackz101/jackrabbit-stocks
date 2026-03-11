@@ -46,6 +46,24 @@ export interface MarketData {
   history: { date: string; price: number }[]; // For mini-chart
 }
 
+export type XRaySlice = { label: string; percentage: number; value: number };
+
+export type XRayReport = {
+  portfolio_value: number;
+  sector_distribution: XRaySlice[];
+  geographic_distribution: XRaySlice[];
+  top_holdings: { ticker: string; percentage: number; value: number }[];
+  top3_concentration_percent: number;
+  beta_score: number;
+  volatility_score: number;
+  risk_score: number;
+  concentration_warning: string | null;
+  benchmark_comparison: {
+    portfolio_sectors: { sector: string; portfolio_pct: number; sp500_pct: number }[];
+  };
+  generated_at: string;
+};
+
 export type SmartPredictionResponse = {
   ownedStocks: {
     ticker: string;

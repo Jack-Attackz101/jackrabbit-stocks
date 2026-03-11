@@ -65,6 +65,46 @@ export async function registerRoutes(
   const marketDataCache = new Map<string, { data: any; timestamp: number }>();
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+  // X-Ray dedicated caches
+  const profileCache = new Map<string, { data: any; timestamp: number }>();
+  const xrayCache = new Map<string, { data: any; timestamp: number }>();
+  const PROFILE_CACHE_TTL = 60 * 60 * 1000; // 1 hour - profile data rarely changes
+  const XRAY_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+  // S&P 500 approximate sector weights (2024)
+  const SP500_SECTORS: Record<string, number> = {
+    "Technology": 28, "Healthcare": 13, "Financials": 13,
+    "Consumer Discretionary": 10, "Communication Services": 9,
+    "Industrials": 8, "Consumer Staples": 7, "Energy": 4,
+    "Real Estate": 3, "Materials": 2, "Utilities": 2,
+  };
+
+  async function fetchFinnhubProfile(symbol: string) {
+    const key = symbol.toUpperCase();
+    const cached = profileCache.get(key);
+    if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL) return cached.data;
+    try {
+      const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${key}&token=${API_KEY}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      profileCache.set(key, { data, timestamp: Date.now() });
+      return data;
+    } catch { return null; }
+  }
+
+  async function fetchFinnhubMetrics(symbol: string) {
+    const cacheKey = `metrics_${symbol.toUpperCase()}`;
+    const cached = profileCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL) return cached.data;
+    try {
+      const res = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol.toUpperCase()}&metric=all&token=${API_KEY}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      profileCache.set(cacheKey, { data, timestamp: Date.now() });
+      return data;
+    } catch { return null; }
+  }
+
   async function fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000) {
     for (let i = 0; i < retries; i++) {
       try {
@@ -77,13 +117,19 @@ export async function registerRoutes(
           backoff *= 2;
           continue;
         }
+        if (response.status === 403) {
+          const err403 = new Error(`API returned 403: access denied (free tier limitation)`) as any;
+          err403.noRetry = true;
+          throw err403;
+        }
         if (!response.ok) {
           const text = await response.text();
           throw new Error(`API returned ${response.status}: ${text}`);
         }
         return response;
-      } catch (err) {
-        console.error(`[Market Data] Attempt ${i + 1} failed:`, err);
+      } catch (err: any) {
+        if (err.noRetry) throw err;
+        console.warn(`[Market Data] Attempt ${i + 1} failed:`, (err as Error).message);
         if (i === retries - 1) throw err;
         await new Promise(resolve => setTimeout(resolve, backoff));
         backoff *= 2;
@@ -336,6 +382,126 @@ You are ORION in FAST MODE. Users should never feel waiting.`;
     } catch (error) {
       console.error("Orion error:", error);
       res.status(500).json({ message: "ORION is currently resting. Please try again later." });
+    }
+  });
+
+  // Portfolio X-Ray
+  app.get(api.xray.get.path, async (req, res) => {
+    const CACHE_KEY = "portfolio_xray";
+    const cached = xrayCache.get(CACHE_KEY);
+    if (cached && Date.now() - cached.timestamp < XRAY_CACHE_TTL) {
+      return res.json(cached.data);
+    }
+
+    try {
+      const stocks = await storage.getStocks();
+
+      if (stocks.length === 0) {
+        return res.json({
+          portfolio_value: 0, sector_distribution: [], geographic_distribution: [],
+          top_holdings: [], top3_concentration_percent: 0, beta_score: 0,
+          volatility_score: 0, risk_score: 0, concentration_warning: null,
+          benchmark_comparison: { portfolio_sectors: [] },
+          generated_at: new Date().toISOString(),
+        });
+      }
+
+      // Enrich all stocks with price + profile + metrics in parallel
+      const enriched = await Promise.all(stocks.map(async (stock) => {
+        const symbol = stock.symbol.toUpperCase();
+        let currentPrice = Number(stock.purchasePrice);
+        try {
+          const md = await fetchRealMarketData(symbol);
+          if (md?.price) currentPrice = md.price;
+        } catch {}
+
+        const [profile, metrics] = await Promise.all([
+          fetchFinnhubProfile(symbol),
+          fetchFinnhubMetrics(symbol),
+        ]);
+
+        return {
+          ticker: symbol,
+          currentValue: currentPrice * Number(stock.quantity),
+          sector: (profile?.finnhubIndustry as string) || "Unknown",
+          country: (profile?.country as string) || "Unknown",
+          beta: (metrics?.metric?.beta as number | null) ?? null,
+        };
+      }));
+
+      const totalValue = enriched.reduce((s, e) => s + e.currentValue, 0);
+      if (totalValue === 0) throw new Error("Portfolio value is zero");
+
+      // Sector distribution
+      const sectorMap = new Map<string, number>();
+      enriched.forEach(e => sectorMap.set(e.sector, (sectorMap.get(e.sector) || 0) + e.currentValue));
+      const sector_distribution = Array.from(sectorMap.entries())
+        .map(([label, value]) => ({ label, value: Math.round(value * 100) / 100, percentage: Math.round((value / totalValue) * 1000) / 10 }))
+        .sort((a, b) => b.percentage - a.percentage);
+
+      // Geographic distribution
+      const geoMap = new Map<string, number>();
+      enriched.forEach(e => geoMap.set(e.country, (geoMap.get(e.country) || 0) + e.currentValue));
+      const geographic_distribution = Array.from(geoMap.entries())
+        .map(([label, value]) => ({ label, value: Math.round(value * 100) / 100, percentage: Math.round((value / totalValue) * 1000) / 10 }))
+        .sort((a, b) => b.percentage - a.percentage);
+
+      // Top holdings
+      const top_holdings = [...enriched]
+        .sort((a, b) => b.currentValue - a.currentValue)
+        .map(e => ({ ticker: e.ticker, value: Math.round(e.currentValue * 100) / 100, percentage: Math.round((e.currentValue / totalValue) * 1000) / 10 }));
+
+      const top3_concentration_percent = Math.round(top_holdings.slice(0, 3).reduce((s, h) => s + h.percentage, 0) * 10) / 10;
+
+      // Weighted average beta
+      const betaStocks = enriched.filter(e => e.beta !== null);
+      let beta_score = 1.0;
+      if (betaStocks.length > 0) {
+        const betaTotal = betaStocks.reduce((s, e) => s + e.currentValue, 0);
+        beta_score = Math.round(betaStocks.reduce((s, e) => s + (e.beta! * (e.currentValue / betaTotal)), 0) * 100) / 100;
+      }
+
+      // Volatility score (1–10)
+      const concFactor = top3_concentration_percent / 100;
+      const betaFactor = Math.min(Math.abs(beta_score - 1) * 2, 1);
+      const volatility_score = Math.min(Math.round((concFactor * 4 + betaFactor * 4 + (beta_score > 1.2 ? 2 : 0)) * 10) / 10, 10);
+
+      // Risk score (1–10)
+      const riskRaw = (top3_concentration_percent / 100) * 4 + Math.min(beta_score * 2, 4) + ((sector_distribution[0]?.percentage || 0) / 100) * 2;
+      const risk_score = Math.min(Math.max(Math.round(riskRaw * 10) / 10, 1), 10);
+
+      // Concentration warning
+      let concentration_warning: string | null = null;
+      if (top_holdings[0]?.percentage >= 40) {
+        concentration_warning = `${top_holdings[0].ticker} represents ${top_holdings[0].percentage.toFixed(1)}% of your portfolio. Consider rebalancing.`;
+      } else if (top3_concentration_percent >= 65) {
+        concentration_warning = `Your top 3 holdings account for ${top3_concentration_percent.toFixed(1)}% of your portfolio value. Diversification recommended.`;
+      }
+
+      // Benchmark vs S&P 500
+      const allSectors = new Set([...sector_distribution.map(s => s.label), ...Object.keys(SP500_SECTORS)]);
+      const portfolio_sectors = Array.from(allSectors)
+        .map(sector => ({
+          sector,
+          portfolio_pct: sector_distribution.find(s => s.label === sector)?.percentage || 0,
+          sp500_pct: SP500_SECTORS[sector] || 0,
+        }))
+        .filter(s => s.portfolio_pct > 0 || s.sp500_pct > 0)
+        .sort((a, b) => b.sp500_pct - a.sp500_pct);
+
+      const report = {
+        portfolio_value: Math.round(totalValue * 100) / 100,
+        sector_distribution, geographic_distribution, top_holdings,
+        top3_concentration_percent, beta_score, volatility_score, risk_score,
+        concentration_warning, benchmark_comparison: { portfolio_sectors },
+        generated_at: new Date().toISOString(),
+      };
+
+      xrayCache.set(CACHE_KEY, { data: report, timestamp: Date.now() });
+      res.json(report);
+    } catch (error) {
+      console.error("[X-Ray] Error:", error);
+      res.status(500).json({ message: "Failed to generate X-Ray report" });
     }
   });
 

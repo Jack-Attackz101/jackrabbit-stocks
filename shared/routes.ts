@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertStockSchema, stocks, type SmartPredictionResponse } from './schema';
+import { insertStockSchema, stocks, type SmartPredictionResponse, type XRayReport } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -72,6 +72,16 @@ export const api = {
       path: '/api/predictions',
       responses: {
         200: z.custom<SmartPredictionResponse>(),
+        500: errorSchemas.internal,
+      },
+    },
+  },
+  xray: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/portfolio/xray',
+      responses: {
+        200: z.custom<XRayReport>(),
         500: errorSchemas.internal,
       },
     },

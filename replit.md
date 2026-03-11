@@ -45,6 +45,8 @@ The API contract is defined in `shared/routes.ts` with typed paths and Zod schem
 - `DELETE /api/stocks/:id` - Remove a stock
 - `GET /api/market/:symbol` - Fetch real-time market data (Finnhub)
 - `GET /api/predictions` - Get AI investment recommendations
+- `GET /api/portfolio/xray` - Portfolio X-Ray risk intelligence report (15-min cache)
+- `POST /api/orion/chat` - ORION AI chat endpoint
 
 ### AI Integration
 - **Provider**: OpenAI via Replit AI Integrations

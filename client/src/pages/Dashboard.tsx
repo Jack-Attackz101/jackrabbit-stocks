@@ -1,5 +1,6 @@
 import { useStocks, useDeleteStock } from "@/hooks/use-stocks";
 import { StockCard } from "@/components/StockCard";
+import { XRayPanel } from "@/components/XRayPanel";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Loader2, TrendingUp, DollarSign, PieChart as PieIcon } from "lucide-react";
 import { motion } from "framer-motion";
@@ -135,6 +136,9 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+
+            {/* Portfolio X-Ray Panel */}
+            <XRayPanel />
           </div>
 
           {/* Right Column: Stock Grid (8 cols) */}
