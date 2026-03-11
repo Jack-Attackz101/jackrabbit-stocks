@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, numeric, timestamp, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, numeric, timestamp, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -13,6 +13,23 @@ export const stocks = pgTable("stocks", {
   purchasePrice: numeric("purchase_price").notNull(),
   purchaseDate: timestamp("purchase_date").defaultNow(),
 });
+
+export const investorProfiles = pgTable("investor_profiles", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().default("default"),
+  riskTolerance: text("risk_tolerance").notNull().default("Moderate"),
+  preferredSectors: text("preferred_sectors").notNull().default("[]"),
+  growthVsDividendBias: text("growth_vs_dividend_bias").notNull().default("Balanced"),
+  volatilityPreference: text("volatility_preference").notNull().default("Moderate"),
+  investmentStyle: text("investment_style").notNull().default("Diversified"),
+  dominantTheme: text("dominant_theme").notNull().default("Mixed"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
+export type InvestorProfile = typeof investorProfiles.$inferSelect;
+export type InvestorProfileParsed = Omit<InvestorProfile, "preferredSectors"> & {
+  preferredSectors: string[];
+};
 
 // === BASE SCHEMAS ===
 export const insertStockSchema = createInsertSchema(stocks).omit({ 
